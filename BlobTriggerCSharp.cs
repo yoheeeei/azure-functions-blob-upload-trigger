@@ -1,15 +1,18 @@
 using System;
+using System.Data.SqlClient;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
+using trigger_blob_added.Entities;
 
 namespace Company.Function {
     public static class BlobTriggerCSharp {
 
         [FunctionName ("BlobTriggerCSharp")]
-        public static void Run ([BlobTrigger ("samples-workitems/{name}", Connection = "hogeyoheinakamura_STORAGE")] Stream myBlob, string name, ILogger log) {
+        public static async Task Run ([BlobTrigger ("samples-workitems/{name}", Connection = "hogeyoheinakamura_STORAGE")] Stream myBlob, string name, ILogger log) {
+
             var nameWithoutExtension = GetPathWithoutExtension (name);
             var splittedNames = nameWithoutExtension.Split ("_");
 
@@ -22,6 +25,26 @@ namespace Company.Function {
 
             var start = DateTime.Parse (startDateAndTime);
             var end = DateTime.Parse (endDateAndTime);
+
+            await HogeAsync (log, new Video { Name = name, StartDate = start, EndDate = end });
+        }
+
+        private static async Task HogeAsync (ILogger log, Video video) {
+            var connectionString = Environment.GetEnvironmentVariable ("SqlConnectionString");
+
+            using (SqlConnection conn = new SqlConnection (connectionString)) {
+                conn.Open ();
+
+                var queryText = "INSERT INTO videos (filename, createdate, enddate) " + "VALUES(@Name, @StartDate, @EndDate)";
+
+                using (SqlCommand cmd = new SqlCommand (queryText, conn)) {
+                    cmd.Parameters.AddWithValue ("@Name", video.Name);
+                    cmd.Parameters.AddWithValue ("@StartDate", video.StartDate);
+                    cmd.Parameters.AddWithValue ("@EndDate", video.EndDate);
+                    // Execute the command and log the # rows affected.
+                    var rows = await cmd.ExecuteNonQueryAsync ();
+                }
+            }
         }
 
         private static string GenerateStringDate (string[] date, string[] time) {
