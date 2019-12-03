@@ -26,7 +26,14 @@ namespace Company.Function {
             var start = DateTime.Parse (startDateAndTime);
             var end = DateTime.Parse (endDateAndTime);
 
-            await HogeAsync (log, new Video { Name = name, StartDate = start, EndDate = end });
+            try {
+                await HogeAsync (log, new Video { Name = name, StartDate = start, EndDate = end });
+                log.LogInformation ($"Database Insert Success.");
+            } catch (Exception e) {
+                log.LogError ($"Database Insert Error.");
+                log.LogError ($"=== Error Message ===");
+                log.LogError ($"{e.Message}");
+            }
         }
 
         private static async Task HogeAsync (ILogger log, Video video) {
